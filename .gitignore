@@ -1,0 +1,6 @@
+.env
+/data/sepomex/
+**/target/
+**/node_modules/
+**/dist/
+.idea/

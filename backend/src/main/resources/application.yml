@@ -1,0 +1,28 @@
+spring:
+  application.name: taller-api
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/taller_db}
+    username: ${SPRING_DATASOURCE_USERNAME:taller_app}
+    password: ${SPRING_DATASOURCE_PASSWORD:change-me}
+  jpa:
+    hibernate.ddl-auto: validate
+    open-in-view: false
+  flyway.enabled: true
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 16MB
+server:
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+management:
+  endpoints.web.exposure.include: health
+  endpoint.health.show-details: never
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET}
+    access-token-minutes: ${APP_ACCESS_TOKEN_MINUTES:15}
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}

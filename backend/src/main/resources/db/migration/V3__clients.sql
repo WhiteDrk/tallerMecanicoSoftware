@@ -1,0 +1,22 @@
+CREATE TABLE clients (
+  id BINARY(16) PRIMARY KEY,
+  full_name VARCHAR(150) NOT NULL,
+  alternate_contact_name VARCHAR(150) NOT NULL,
+  birth_date DATE NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  phone_normalized VARCHAR(20) NOT NULL,
+  work_phone VARCHAR(20) NOT NULL,
+  email VARCHAR(254) NOT NULL,
+  email_normalized VARCHAR(254) NOT NULL,
+  work_email VARCHAR(254) NULL,
+  street VARCHAR(160) NOT NULL,
+  neighborhood VARCHAR(120) NOT NULL,
+  municipality VARCHAR(120) NOT NULL,
+  state VARCHAR(120) NOT NULL,
+  postal_code VARCHAR(10) NOT NULL,
+  photo_data MEDIUMBLOB NULL,
+  photo_content_type VARCHAR(50) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uq_clients_email UNIQUE (email_normalized),
+  CONSTRAINT uq_clients_phone UNIQUE (phone_normalized)
+);

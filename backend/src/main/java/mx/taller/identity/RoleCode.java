@@ -1,0 +1,5 @@
+package mx.taller.identity;
+
+public enum RoleCode {
+  OWNER, MANAGER, TREASURY, MECHANIC_CHIEF, MECHANIC, CUSTOMER_SERVICE, CUSTOMER, AUDITOR
+}

@@ -1,0 +1,22 @@
+{
+  "name": "taller-portal",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@primevue/themes": "^4.3.9",
+    "primeicons": "^7.0.0",
+    "primevue": "^4.3.9",
+    "sweetalert2": "^11.26.25",
+    "vue": "^3.5.21"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.1.5"
+  }
+}

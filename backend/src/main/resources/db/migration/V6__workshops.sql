@@ -1,0 +1,20 @@
+CREATE TABLE workshops (
+  id BINARY(16) PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  legal_name VARCHAR(200) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  manager_user_id BINARY(16) NOT NULL,
+  rfc VARCHAR(13) NOT NULL,
+  email VARCHAR(254) NOT NULL,
+  street VARCHAR(160) NOT NULL,
+  neighborhood VARCHAR(120) NOT NULL,
+  municipality VARCHAR(120) NOT NULL,
+  state VARCHAR(120) NOT NULL,
+  postal_code VARCHAR(5) NOT NULL,
+  photo_data MEDIUMBLOB NULL,
+  photo_content_type VARCHAR(50) NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uq_workshops_rfc UNIQUE (rfc),
+  CONSTRAINT fk_workshops_manager FOREIGN KEY (manager_user_id) REFERENCES users(id),
+  INDEX idx_workshops_manager (manager_user_id)
+);
