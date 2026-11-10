@@ -32,7 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     } catch (JwtException | IllegalArgumentException exception) {
       SecurityContextHolder.clearContext();
       response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-      response.setContentType("application/json");
+      response.setContentType("application/json;charset=UTF-8");
       response.getWriter().write("{\"code\":\"INVALID_TOKEN\",\"message\":\"Credenciales no válidas\"}");
     }
   }

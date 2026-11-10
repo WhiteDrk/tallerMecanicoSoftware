@@ -15,8 +15,8 @@ public class WorkshopAccessService {
   public WorkshopAccessService(WorkshopRepository workshops, AppUserRepository users) { this.workshops = workshops; this.users = users; }
   @Transactional(readOnly = true) public List<Workshop> accessible(String actorId) {
     AppUser actor = actor(actorId);
-    if (hasRole(actor, RoleCode.OWNER)) return workshops.findAllByOrderByNameAsc().stream().filter(Workshop::isActive).toList();
-    if (hasRole(actor, RoleCode.MANAGER) || hasRole(actor, RoleCode.CUSTOMER_SERVICE)) return workshops.findActiveAccessibleByUserId(actor.getId());
+    if (hasRole(actor, RoleCode.ADMINISTRADOR)) return workshops.findAllByOrderByNameAsc().stream().filter(Workshop::isActive).toList();
+    if (hasRole(actor, RoleCode.MANAGER) || hasRole(actor, RoleCode.RECEPCIONISTA) || hasRole(actor, RoleCode.SECRETARIA)) return workshops.findActiveAccessibleByUserId(actor.getId());
     throw new WorkshopAuthorizationException("No tiene acceso a talleres");
   }
   @Transactional(readOnly = true) public Workshop requireAccess(String actorId, UUID workshopId) {

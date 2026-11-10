@@ -17,12 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
   private final AppUserRepository users; private final RoleRepository roles; private final PasswordResetTokenRepository resetTokens; private final PasswordEncoder passwords; private final JwtService jwt; private final LoginRateLimiter rateLimiter; private final AuditService audit;
   public AuthService(AppUserRepository users, RoleRepository roles, PasswordResetTokenRepository resetTokens, PasswordEncoder passwords, JwtService jwt, LoginRateLimiter rateLimiter, AuditService audit) { this.users=users; this.roles=roles; this.resetTokens=resetTokens; this.passwords=passwords; this.jwt=jwt; this.rateLimiter=rateLimiter; this.audit=audit; }
-  @Transactional public void register(AuthController.Register request, String ip) {
-    if (users.findByEmailIgnoreCase(request.email()).isPresent()) throw new ConflictException("No se pudo registrar la solicitud");
-    Role customer = roles.findByCode(RoleCode.CUSTOMER).orElseThrow(() -> new IllegalStateException("Default role is missing"));
-    AppUser user = users.save(new AppUser(request.email(), request.fullName().trim(), passwords.encode(request.password()), customer));
-    audit.record(user, "USER_REGISTERED", "USER", user.getId().toString(), ip, "{\"approvalRequired\":true}");
-  }
   @Transactional public AuthController.TokenResponse login(AuthController.Login request, String ip) {
     String key = request.email().toLowerCase() + "|" + ip;
     if (!rateLimiter.allowed(key)) throw new AuthenticationFailedException();

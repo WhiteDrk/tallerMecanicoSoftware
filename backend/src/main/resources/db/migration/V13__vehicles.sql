@@ -1,0 +1,23 @@
+CREATE TABLE vehicles (
+  id BINARY(16) PRIMARY KEY,
+  client_id BINARY(16) NOT NULL,
+  model_id BIGINT NOT NULL,
+  vin VARCHAR(17) NOT NULL,
+  plate VARCHAR(10) NOT NULL,
+  plate_normalized VARCHAR(10) NOT NULL,
+  vehicle_year SMALLINT NOT NULL,
+  version VARCHAR(100) NOT NULL,
+  mileage BIGINT NULL,
+  serial_number VARCHAR(40) NOT NULL,
+  status_id BIGINT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_vehicles_client FOREIGN KEY (client_id) REFERENCES clients(id),
+  CONSTRAINT fk_vehicles_model FOREIGN KEY (model_id) REFERENCES vehicle_models(id),
+  CONSTRAINT fk_vehicles_status FOREIGN KEY (status_id) REFERENCES status_catalog(id),
+  UNIQUE KEY uq_vehicles_vin (vin),
+  UNIQUE KEY uq_vehicles_plate (plate_normalized),
+  UNIQUE KEY uq_vehicles_serial_number (serial_number),
+  INDEX idx_vehicles_client (client_id),
+  INDEX idx_vehicles_status (status_id)
+);

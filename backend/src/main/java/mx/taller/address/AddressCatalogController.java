@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/address-catalog")
-@PreAuthorize("hasAnyRole('OWNER','MANAGER','CUSTOMER_SERVICE')")
+@PreAuthorize("hasAnyRole('ADMINISTRADOR','MANAGER','RECEPCIONISTA','SECRETARIA')")
 @Validated
 public class AddressCatalogController {
   private final AddressCatalogFacade catalog;

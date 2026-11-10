@@ -16,24 +16,24 @@ public class WorkshopController {
   private final WorkshopFacade facade;
   private final WorkshopAccessService access;
   public WorkshopController(WorkshopFacade facade, WorkshopAccessService access) { this.facade = facade; this.access = access; }
-  @GetMapping("/available") @PreAuthorize("hasAnyRole('OWNER','MANAGER','CUSTOMER_SERVICE')")
+  @GetMapping("/available") @PreAuthorize("hasAnyRole('ADMINISTRADOR','MANAGER','RECEPCIONISTA','SECRETARIA')")
   public List<WorkshopFacade.WorkshopOption> available(Authentication authentication) { return facade.accessible(authentication.getName(), access); }
-  @GetMapping @PreAuthorize("hasAnyRole('OWNER','MANAGER')")
+  @GetMapping @PreAuthorize("hasAnyRole('ADMINISTRADOR','MANAGER')")
   public List<WorkshopFacade.WorkshopDetail> list(Authentication authentication) { return facade.list(authentication.getName()); }
-  @GetMapping("/{workshopId}") @PreAuthorize("hasAnyRole('OWNER','MANAGER')")
+  @GetMapping("/{workshopId}") @PreAuthorize("hasAnyRole('ADMINISTRADOR','MANAGER')")
   public WorkshopFacade.WorkshopDetail get(@PathVariable java.util.UUID workshopId, Authentication authentication) { return facade.get(workshopId, authentication.getName()); }
-  @GetMapping("/managers") @PreAuthorize("hasAnyRole('OWNER','MANAGER')")
+  @GetMapping("/managers") @PreAuthorize("hasAnyRole('ADMINISTRADOR','MANAGER')")
   public List<WorkshopFacade.ManagerOption> managers(Authentication authentication) { return facade.managers(authentication.getName()); }
-  @PostMapping(consumes = "multipart/form-data") @ResponseStatus(HttpStatus.CREATED) @PreAuthorize("hasAnyRole('OWNER','MANAGER')")
+  @PostMapping(consumes = "multipart/form-data") @ResponseStatus(HttpStatus.CREATED) @PreAuthorize("hasAnyRole('ADMINISTRADOR','MANAGER')")
   public Map<String, Object> register(@Valid @RequestPart("data") WorkshopRegistrationRequest data, @RequestPart(value = "photo", required = false) MultipartFile photo, Authentication authentication, HttpServletRequest request) {
     WorkshopFacade.WorkshopResult result = facade.register(data, photo, authentication.getName(), request.getRemoteAddr());
     return Map.of("id", result.id(), "name", result.name(), "message", "Taller registrado exitosamente");
   }
-  @PutMapping(value = "/{workshopId}", consumes = "multipart/form-data") @PreAuthorize("hasAnyRole('OWNER','MANAGER')")
+  @PutMapping(value = "/{workshopId}", consumes = "multipart/form-data") @PreAuthorize("hasAnyRole('ADMINISTRADOR','MANAGER')")
   public Map<String, Object> update(@PathVariable java.util.UUID workshopId, @Valid @RequestPart("data") WorkshopRegistrationRequest data, @RequestPart(value = "photo", required = false) MultipartFile photo, Authentication authentication, HttpServletRequest request) {
     WorkshopFacade.WorkshopResult result = facade.update(workshopId, data, photo, authentication.getName(), request.getRemoteAddr());
     return Map.of("id", result.id(), "name", result.name(), "message", "Taller actualizado exitosamente");
   }
-  @DeleteMapping("/{workshopId}") @ResponseStatus(HttpStatus.NO_CONTENT) @PreAuthorize("hasRole('OWNER')")
+  @DeleteMapping("/{workshopId}") @ResponseStatus(HttpStatus.NO_CONTENT) @PreAuthorize("hasRole('ADMINISTRADOR')")
   public void deactivate(@PathVariable java.util.UUID workshopId, Authentication authentication, HttpServletRequest request) { facade.deactivate(workshopId, authentication.getName(), request.getRemoteAddr()); }
 }

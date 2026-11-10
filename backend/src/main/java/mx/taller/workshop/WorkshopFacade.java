@@ -18,20 +18,20 @@ public class WorkshopFacade {
 
   @Transactional(readOnly = true) public List<ManagerOption> managers(String actorId) {
     AppUser actor = actor(actorId);
-    if (hasRole(actor, RoleCode.OWNER)) return users.findAll().stream().filter(user -> user.isEnabled() && hasRole(user, RoleCode.MANAGER)).map(this::option).toList();
+    if (hasRole(actor, RoleCode.ADMINISTRADOR)) return users.findAll().stream().filter(user -> user.isEnabled() && hasRole(user, RoleCode.MANAGER)).map(this::option).toList();
     if (hasRole(actor, RoleCode.MANAGER)) return List.of(option(actor));
     throw new WorkshopAuthorizationException("No tiene permisos para consultar gerentes");
   }
 
   @Transactional(readOnly = true) public List<WorkshopDetail> list(String actorId) {
     AppUser actor = actor(actorId);
-    List<Workshop> result = hasRole(actor, RoleCode.OWNER) ? workshops.findAllByOrderByNameAsc() : workshops.findByManagerIdOrderByNameAsc(actor.getId());
-    if (!hasRole(actor, RoleCode.OWNER) && !hasRole(actor, RoleCode.MANAGER)) throw new WorkshopAuthorizationException("No tiene permisos para consultar talleres");
-    return result.stream().map(workshop -> detail(workshop, hasRole(actor, RoleCode.OWNER))).toList();
+    List<Workshop> result = hasRole(actor, RoleCode.ADMINISTRADOR) ? workshops.findAllByOrderByNameAsc() : workshops.findByManagerIdOrderByNameAsc(actor.getId());
+    if (!hasRole(actor, RoleCode.ADMINISTRADOR) && !hasRole(actor, RoleCode.MANAGER)) throw new WorkshopAuthorizationException("No tiene permisos para consultar talleres");
+    return result.stream().map(workshop -> detail(workshop, hasRole(actor, RoleCode.ADMINISTRADOR))).toList();
   }
   @Transactional(readOnly = true) public List<WorkshopOption> accessible(String actorId, WorkshopAccessService access) { return access.accessible(actorId).stream().map(workshop -> new WorkshopOption(workshop.getId(), workshop.getName())).toList(); }
 
-  @Transactional(readOnly = true) public WorkshopDetail get(UUID workshopId, String actorId) { AppUser actor = actor(actorId); return detail(authorize(workshopId, actor), hasRole(actor, RoleCode.OWNER)); }
+  @Transactional(readOnly = true) public WorkshopDetail get(UUID workshopId, String actorId) { AppUser actor = actor(actorId); return detail(authorize(workshopId, actor), hasRole(actor, RoleCode.ADMINISTRADOR)); }
 
   @Transactional public WorkshopResult register(WorkshopRegistrationRequest request, MultipartFile photo, String actorId, String ip) {
     AppUser actor = actor(actorId);
@@ -60,7 +60,7 @@ public class WorkshopFacade {
   }
   @Transactional public void deactivate(UUID workshopId, String actorId, String ip) {
     AppUser actor = actor(actorId);
-    if (!hasRole(actor, RoleCode.OWNER)) throw new WorkshopAuthorizationException("Sólo Administración puede desactivar talleres");
+    if (!hasRole(actor, RoleCode.ADMINISTRADOR)) throw new WorkshopAuthorizationException("Sólo Administración puede desactivar talleres");
     Workshop workshop = workshops.findById(workshopId).orElseThrow(() -> new WorkshopAuthorizationException("El taller no existe"));
     if (!workshop.isActive()) throw new WorkshopAuthorizationException("El taller ya está desactivado");
     workshop.deactivate();
@@ -73,11 +73,11 @@ public class WorkshopFacade {
     return manager;
   }
   private void authorizeAssignment(AppUser actor, AppUser manager) {
-    if (!hasRole(actor, RoleCode.OWNER) && (!hasRole(actor, RoleCode.MANAGER) || !actor.getId().equals(manager.getId()))) throw new WorkshopAuthorizationException("Un gerente sólo puede asignarse a sí mismo");
+    if (!hasRole(actor, RoleCode.ADMINISTRADOR) && (!hasRole(actor, RoleCode.MANAGER) || !actor.getId().equals(manager.getId()))) throw new WorkshopAuthorizationException("Un gerente sólo puede asignarse a sí mismo");
   }
   private Workshop authorize(UUID workshopId, AppUser actor) {
     Workshop workshop = workshops.findById(workshopId).orElseThrow(() -> new WorkshopAuthorizationException("El taller no existe"));
-    if (hasRole(actor, RoleCode.OWNER) || hasRole(actor, RoleCode.MANAGER) && workshop.getManager().getId().equals(actor.getId())) return workshop;
+    if (hasRole(actor, RoleCode.ADMINISTRADOR) || hasRole(actor, RoleCode.MANAGER) && workshop.getManager().getId().equals(actor.getId())) return workshop;
     throw new WorkshopAuthorizationException("No tiene acceso a este taller");
   }
   private boolean hasRole(AppUser user, RoleCode role) { return user.getRoles().stream().anyMatch(item -> item.getCode() == role); }

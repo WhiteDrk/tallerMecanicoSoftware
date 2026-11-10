@@ -5,6 +5,7 @@ import { registerClient } from '../services/clientApi'
 import { addressCatalogApi } from '../services/addressCatalogApi'
 import { availableWorkshops } from '../services/workshopApi'
 
+const emit = defineEmits(['registered'])
 const form = reactive({ fullName:'', alternateContactName:'', birthDate:'', phone:'', workPhone:'', email:'', workEmail:'', street:'', neighborhood:'', municipality:'', state:'', postalCode:'', workshopId:null })
 const photo = ref(null)
 const saving = ref(false)
@@ -81,6 +82,7 @@ async function submit() {
     await Swal.fire({ icon:'success', title:'Cliente registrado', text:`${result.fullName} fue registrado exitosamente.`, confirmButtonColor:'#0f766e' })
     Object.keys(form).forEach(key => form[key] = key === 'workshopId' ? null : ''); photo.value = null
     const input = document.getElementById('client-photo'); if (input) input.value = ''
+    resetDependentAddress(); addressMessage.value = ''; emit('registered')
   } catch (error) {
     await Swal.fire({ icon:'error', title:'No se registró el cliente', text:error.message, confirmButtonColor:'#0f766e' })
   } finally { saving.value = false }

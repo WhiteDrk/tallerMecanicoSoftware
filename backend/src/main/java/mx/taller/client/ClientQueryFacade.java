@@ -19,10 +19,10 @@ public class ClientQueryFacade {
   public ClientQueryFacade(ClientRepository clients, WorkshopAccessService workshopAccess) { this.clients = clients; this.workshopAccess = workshopAccess; }
   @Transactional(readOnly = true) public ClientPage list(String actorId, UUID workshopId, int page, int size, String sort, String direction) {
     Workshop workshop = workshopAccess.requireAccess(actorId, workshopId);
-    String safeSort = SORTABLE.contains(sort) ? sort : "fullName";
+    String safeSort = "status".equals(sort) ? "status.value" : SORTABLE.contains(sort) ? sort : "fullName";
     Sort.Direction safeDirection = "desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC;
     Page<Client> result = clients.findByWorkshopId(workshop.getId(), PageRequest.of(page, Math.min(size, 10), Sort.by(safeDirection, safeSort)));
-    List<ClientSummary> content = result.getContent().stream().map(client -> new ClientSummary(client.getId(), client.getFullName(), client.getEmail(), client.getStatus().name())).toList();
+    List<ClientSummary> content = result.getContent().stream().map(client -> new ClientSummary(client.getId(), client.getFullName(), client.getEmail(), client.getStatus().getValue())).toList();
     return new ClientPage(content, result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
   }
   public record ClientSummary(UUID id, String fullName, String email, String status) { }
