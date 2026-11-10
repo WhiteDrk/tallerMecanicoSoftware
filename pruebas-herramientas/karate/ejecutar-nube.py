@@ -1,6 +1,7 @@
 """Ejecuta lotes acotados contra la demostracion y prepara reportes portables."""
 
 import argparse
+import base64
 import csv
 import getpass
 import html
@@ -14,9 +15,10 @@ import subprocess
 import sys
 import time
 from datetime import datetime
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
+from token_demo import change_role
 
 ORIGIN = 'https://motordesk-pruebas.up.railway.app'
 HERE = Path(__file__).resolve().parent
@@ -44,6 +46,8 @@ def http(path, payload=None, token=None):
         except (ValueError, UnicodeError):
             body = {}
         return error.code, body
+    except (URLError, TimeoutError):
+        return 0, {'code': 'CONNECTION_ERROR'}
 
 
 def redact(folder, secrets):
@@ -67,6 +71,10 @@ def redact(folder, secrets):
 
 
 def report(folder, data):
+    classroom = data.get('demostracion_clase', False)
+    title = 'Demostración de seguridad y carga' if classroom else 'Pruebas de carga en MotorDesk'
+    objective = ('Comprobar consultas válidas, rechazo de credenciales ausentes o manipuladas, permisos por rol, entradas inválidas y carga progresiva. Los códigos 400, 401, 403 y 404 son resultados correctos cuando el caso los espera.' if classroom else 'Comprobar la consulta GET /api/v1/vehicles por VIN con una cuenta de recepción autorizada. Se espera HTTP 200, el VIN de prueba y el taller correspondiente.')
+    threshold_label = 'umbral por respuesta en la etapa de carga' if classroom else 'umbral didáctico por respuesta'
     rows = []
     for stage in data['etapas']:
         if 'escenarios' not in stage:
@@ -94,11 +102,11 @@ table{{border-collapse:collapse;width:100%;font-size:14px}}th,td{{padding:13px 1
 th{{background:#f1f5f9}}a{{color:#075e9b}}.table{{overflow:auto}}small{{color:#637086}}code{{background:#edf2f7;padding:3px 6px;border-radius:4px}}
 @media(max-width:650px){{.cards{{grid-template-columns:1fr}}main{{padding:18px 12px}}header{{padding:24px}}}}
 @media print{{body{{background:white}}main{{padding:0}}section,.card{{break-inside:avoid}}header{{background:#e9eef5;color:#18243b}}.label{{color:#12665c}}}}
-</style><main><header><div class="label">EVIDENCIA DE EJECUCION · KARATE 2.1.4</div><h1>Pruebas de carga en MotorDesk</h1>
-<p>Consulta de vehiculos con autenticacion y acceso a MySQL.</p><p>{html.escape(data['fecha_local'])} · America/Mexico_City</p></header>
-<div class="cards"><div class="card"><strong>{total}</strong>consultas en los lotes terminados</div><div class="card"><strong>{failures}</strong>escenarios fallidos</div>
-<div class="card"><strong>{data['umbral_ms']} ms</strong>umbral didactico por respuesta</div></div>
-<section><h2>Objetivo y alcance</h2><p>Comprobar la consulta <code>GET /api/v1/vehicles</code> por VIN con una cuenta de recepcion autorizada. Se espera HTTP 200, el VIN de prueba y el taller correspondiente.</p>
+</style><main><header><div class="label">EVIDENCIA DE EJECUCION · KARATE 2.1.4</div><h1>{title}</h1>
+<p>Pruebas de API ejecutadas contra MotorDesk en Railway.</p><p>{html.escape(data['fecha_local'])} · America/Mexico_City</p></header>
+<div class="cards"><div class="card"><strong>{total}</strong>casos en las etapas terminadas</div><div class="card"><strong>{failures}</strong>escenarios fallidos</div>
+<div class="card"><strong>{data['umbral_ms']} ms</strong>{threshold_label}</div></div>
+<section><h2>Objetivo y alcance</h2><p>{objective}</p>
 <p>Destino: <a href="{ORIGIN}">{ORIGIN}</a>. Cliente Karate ejecutado desde la computadora local contra Railway. Un login y una comprobacion previa quedan fuera de las estadisticas.</p></section>
 <section><h2>Resultados por etapa</h2><div class="table"><table><thead><tr><th>Etapa</th><th>Casos</th><th>Paralelismo</th><th>Aprobados</th><th>Fallidos</th><th>p95 (ms)</th><th>Max. (ms)</th><th>HTML Karate</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
 <p><strong>Interpretacion:</strong> {conclusion}</p></section>
@@ -133,6 +141,7 @@ def main():
     parser.add_argument('--credentials-file', type=Path, help='JSON privado preparado para esta demostracion; no se copia al reporte')
     parser.add_argument('--max-ms', type=int, default=2000)
     parser.add_argument('--publish', action='store_true', help='Al terminar, subir el ZIP al portal con una cuenta de administración')
+    parser.add_argument('--demo-clase', action='store_true', help='Primero ejecutar 8 casos de autenticación, permisos y validación')
     args = parser.parse_args()
     if not 100 <= args.max_ms <= 10000:
         parser.error('--max-ms debe estar entre 100 y 10000')
@@ -147,6 +156,12 @@ def main():
     if status != 200 or not body.get('accessToken'):
         raise SystemExit('No se pudo iniciar sesion: HTTP ' + str(status))
     token = body['accessToken']
+    tampered_token = change_role(token)
+    if args.demo_clase:
+        payload = token.split('.')[1]
+        claims = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))
+        if claims.get('roles') != ['ROLE_RECEPCIONISTA']:
+            raise SystemExit('La demostración requiere la cuenta de Lucía con rol de recepción; no uses la de Daniel para ejecutar los casos.')
     status, body = http('/api/v1/vehicles?criterion=VIN&value=3KPF24AD3R2610131', token=token)
     if status != 200 or body.get('workshopName') != 'MotorDesk Pruebas Nube':
         raise SystemExit('La comprobacion previa no aprobo: HTTP ' + str(status) + '. No se ejecutaron lotes.')
@@ -154,15 +169,18 @@ def main():
     folder = HERE / 'target' / ('nube-' + now.strftime('%Y%m%d-%H%M%S'))
     folder.mkdir(parents=True, exist_ok=False)
     data = {'fecha_local': now.isoformat(timespec='seconds'), 'origen': ORIGIN,
-            'herramienta': 'Karate 2.1.4', 'umbral_ms': args.max_ms, 'etapas': []}
+            'herramienta': 'Karate 2.1.4', 'umbral_ms': args.max_ms, 'demostracion_clase': args.demo_clase, 'etapas': []}
     engine = Path.home() / '.karate/dist/karate-2.1.4.jar'
     if not engine.is_file():
         raise SystemExit('No se encontro el motor Karate 2.1.4 instalado.')
-    for index, (name, cases, threads) in enumerate(STAGES, 1):
+    runs = [(name, cases, threads, '03-nube-consulta-autenticada.feature') for name, cases, threads in STAGES]
+    if args.demo_clase:
+        runs.insert(0, ('Seguridad y validaciones', 8, 1, '04-demo-seguridad.feature'))
+    for index, (name, cases, threads, feature) in enumerate(runs, 1):
         print(f'{name}: {cases} consultas, paralelismo maximo {threads}', flush=True)
         stage_folder = folder / ('etapa-' + str(index))
-        env = {**os.environ, 'MOTORDESK_ACCESS_TOKEN': token, 'NUBE_CASOS': str(cases), 'NUBE_MAX_MS': str(args.max_ms)}
-        command = ['java', '-jar', str(engine), 'run', '-T', str(threads), '-o', str(stage_folder), str(HERE / '03-nube-consulta-autenticada.feature')]
+        env = {**os.environ, 'MOTORDESK_ACCESS_TOKEN': token, 'MOTORDESK_TAMPERED_TOKEN': tampered_token, 'NUBE_CASOS': str(cases), 'NUBE_MAX_MS': str(args.max_ms)}
+        command = ['java', '-jar', str(engine), 'run', '-T', str(threads), '-o', str(stage_folder), str(HERE / feature)]
         stage = {'nombre': name, 'casos_configurados': cases, 'paralelismo': threads}
         started = time.monotonic()
         try:
@@ -177,6 +195,8 @@ def main():
             stage['error'] = 'No se pudo cerrar o interpretar el reporte: ' + str(error)
         stage['duracion_proceso_s'] = round(time.monotonic() - started, 3)
         data['etapas'].append(stage)
+        if 'escenarios' in stage:
+            print(f"Resultado: {stage['aprobados']}/{stage['escenarios']} aprobados; {stage['fallidos']} fallidos; HTTP {stage['estados_http']}", flush=True)
         print(json.dumps(stage, ensure_ascii=False), flush=True)
         if stage.get('error') or stage.get('fallidos') or stage.get('exit_code'):
             print('Se detiene el aumento de carga para revisar esta etapa.', flush=True)
@@ -185,17 +205,20 @@ def main():
     final_status, final_vehicle = http('/api/v1/vehicles?criterion=VIN&value=3KPF24AD3R2610131', token=token)
     data['comprobacion_final_http'] = final_status
     data['vehiculo_disponible_al_terminar'] = final_status == 200 and final_vehicle.get('vin') == '3KPF24AD3R2610131'
-    data['archivos_redactados'] = redact(folder, [token, password])
+    data['archivos_redactados'] = redact(folder, [token, tampered_token, password])
     report(folder, data)
-    redact(folder, [token, password])
+    redact(folder, [token, tampered_token, password])
     for path in folder.rglob('*'):
         if path.is_file():
             raw = path.read_bytes()
-            assert token.encode() not in raw and password.encode() not in raw
+            assert all(secret.encode() not in raw for secret in [token,tampered_token,password])
     archive = shutil.make_archive(str(folder), 'zip', root_dir=folder.parent, base_dir=folder.name)
     print(json.dumps({'resumen_html': str(folder / 'index.html'), 'zip': archive}, ensure_ascii=False), flush=True)
     if args.publish:
         command = [sys.executable, str(HERE / 'subir-reporte.py'), archive]
+        if args.demo_clase:
+            command.extend(['--title', f'Demostración en clase · seguridad y carga · umbral {args.max_ms} ms', '--notes',
+                f'Casos negativos de seguridad con respuestas esperadas y carga progresiva. Umbral de práctica de {args.max_ms} ms aplicado a la etapa de carga; no es un SLA. Un HTTP de rechazo esperado es un caso aprobado.'])
         if args.credentials_file:
             command.extend(['--credentials-file', str(args.credentials_file)])
         subprocess.run(command, check=True)

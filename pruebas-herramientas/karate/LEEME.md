@@ -1,5 +1,9 @@
 # Practica guiada de Karate y Burp
 
+La demostración lista para exponer está en [GUIA_CLASE.md](GUIA_CLASE.md).
+Incluye `--demo-clase`, comparación de umbrales, manipulación de JWT en Burp
+y publicación de evidencia en el portal.
+
 ## Nube y portal de reportes
 
 `03-nube-consulta-autenticada.feature` consulta el vehículo de demostración en

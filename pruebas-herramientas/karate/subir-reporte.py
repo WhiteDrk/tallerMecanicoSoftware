@@ -5,7 +5,7 @@ import getpass
 import json
 from pathlib import Path
 import secrets
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 ORIGIN = 'https://motordesk-pruebas.up.railway.app'
@@ -22,6 +22,8 @@ def send(path, body, headers):
         except (ValueError, UnicodeError):
             message = ''
         raise SystemExit(f'No se pudo publicar: HTTP {error.code}. {message}') from None
+    except (URLError, TimeoutError):
+        raise SystemExit('No se pudo conectar con Railway. El ZIP sigue guardado localmente para reintentar la subida.') from None
 
 
 def main():

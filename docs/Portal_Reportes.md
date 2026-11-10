@@ -1,5 +1,8 @@
 # Reportes de pruebas en MotorDesk
 
+Para la exposición con Karate y Burp, consultar la
+[guía de clase](../pruebas-herramientas/karate/GUIA_CLASE.md).
+
 La sección **Reportes** utiliza el inicio de sesión existente. Administración
 puede subir evidencia; Administración, Gerencia y Auditoría pueden consultar
 los resultados y descargar el paquete. Recepción, Clientes y otros roles no
