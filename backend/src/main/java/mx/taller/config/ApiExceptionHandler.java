@@ -18,6 +18,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
 
 @RestControllerAdvice public class ApiExceptionHandler {
+  @ExceptionHandler(mx.taller.report.ReportException.class) @ResponseStatus(HttpStatus.BAD_REQUEST)
+  Map<String,Object> invalidReport(mx.taller.report.ReportException exception) { return error("INVALID_TEST_REPORT",exception.getMessage()); }
+  @ExceptionHandler(mx.taller.report.ReportNotFoundException.class) @ResponseStatus(HttpStatus.NOT_FOUND)
+  Map<String,Object> reportNotFound() { return error("TEST_REPORT_NOT_FOUND","El reporte no existe"); }
   @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class) @ResponseStatus(HttpStatus.CONFLICT)
   Map<String,Object> staleVehicle() { return error("STALE_RECORD", "La ficha cambió; vuelve a consultarla antes de continuar"); }
   @ExceptionHandler(mx.taller.vehicle.VehicleNotFoundException.class) @ResponseStatus(HttpStatus.NOT_FOUND)

@@ -32,6 +32,8 @@ public class SecurityConfig {
       .exceptionHandling(e -> e.authenticationEntryPoint((request, response, exception) -> { response.setStatus(HttpStatus.UNAUTHORIZED.value()); response.setContentType("application/json;charset=UTF-8"); response.getWriter().write("{\"code\":\"UNAUTHENTICATED\",\"message\":\"Autenticación requerida\"}"); }).accessDeniedHandler((request, response, exception) -> { response.setStatus(HttpStatus.FORBIDDEN.value()); response.setContentType("application/json;charset=UTF-8"); response.getWriter().write("{\"code\":\"FORBIDDEN\",\"message\":\"No tiene permisos para esta operación\"}"); }))
       .authorizeHttpRequests(a -> a
         .requestMatchers("/api/v1/auth/**", "/actuator/health").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/v1/test-reports", "/api/v1/test-reports/**").hasAnyRole("ADMINISTRADOR","MANAGER","AUDITOR")
+        .requestMatchers(HttpMethod.POST, "/api/v1/test-reports").hasRole("ADMINISTRADOR")
         .requestMatchers(HttpMethod.GET, "/api/v1/status-catalog").hasAnyRole("ADMINISTRADOR", "MANAGER")
         .requestMatchers(HttpMethod.POST, "/api/v1/status-catalog").hasAnyRole("ADMINISTRADOR", "MANAGER")
         .requestMatchers(HttpMethod.PUT, "/api/v1/status-catalog/*").hasAnyRole("ADMINISTRADOR", "MANAGER")

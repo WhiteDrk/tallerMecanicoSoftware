@@ -25,6 +25,14 @@ La base no se publica al host; solamente Nginx expone el puerto web. Usuarios, t
 
 ## Revisión actual
 
+### Portal de reportes de pruebas
+
+La sección **Reportes** permite que Administración publique paquetes de evidencia
+y que Gerencia y Auditoría consulten el resumen y descarguen el original tras
+iniciar sesión. Los archivos se almacenan en MySQL, con acceso verificado por la
+API. Consulta [Portal_Reportes.md](docs/Portal_Reportes.md) para la subida manual
+y la publicación desde Karate.
+
 ### Demostración temporal en Railway
 
 La configuración y los pasos para publicar `web`, `api` y MySQL están en

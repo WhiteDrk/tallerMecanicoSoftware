@@ -10,6 +10,7 @@ import ClientRegistrationForm from './components/ClientRegistrationForm.vue'
 import ClientList from './components/ClientList.vue'
 import WorkshopRegistrationForm from './components/WorkshopRegistrationForm.vue'
 import StatusCatalogView from './components/StatusCatalogView.vue'
+import TestReportsView from './components/TestReportsView.vue'
 import VehicleBlueprint from './components/VehicleBlueprint.vue'
 import { login, registerCustomerAccount } from './services/authApi'
 
@@ -51,6 +52,7 @@ const navigation = computed(() => [
   ...(hasRole('ADMINISTRADOR', 'MANAGER') ? [{ label:'Talleres', icon:'pi-building', enabled:true }] : []),
   ...(hasRole('ADMINISTRADOR', 'MANAGER', 'RECEPCIONISTA', 'SECRETARIA') ? [{ label:'Clientes', icon:'pi-users', enabled:true }] : []),
   ...(hasRole('ADMINISTRADOR', 'MANAGER') ? [{ label:'Estatus', icon:'pi-tags', enabled:true }] : []),
+  ...(hasRole('ADMINISTRADOR', 'MANAGER', 'AUDITOR') ? [{ label:'Reportes', icon:'pi-chart-bar', enabled:true }] : []),
   { label:'Órdenes', icon:'pi-file-edit', enabled:false },
   { label:'Inventario', icon:'pi-box', enabled:false },
   { label:'Presupuestos', icon:'pi-wallet', enabled:false },
@@ -66,7 +68,7 @@ const visibleOrders = computed(() => orderFilter.value === 'Todas' ? orders : or
 function acceptSession(session) {
   sessionStorage.setItem('accessToken', session.accessToken)
   identity.value = sessionClaims(session.accessToken)
-  view.value = 'app'; activeNav.value = 'Inicio'; password.value = ''
+  view.value = 'app'; activeNav.value = location.hash.startsWith('#reportes') && hasRole('ADMINISTRADOR','MANAGER','AUDITOR') ? 'Reportes' : 'Inicio'; password.value = ''
 }
 function signOut() {
   sessionStorage.removeItem('accessToken')
@@ -92,7 +94,15 @@ async function createAccount() {
   } catch (error) { await Swal.fire({ icon:'error', title:'No fue posible crear la cuenta', text:error.message }) }
   finally { registering.value = false }
 }
-function navigate(label) { activeNav.value = label; mobileNav.value = false }
+function navigate(label) {
+  activeNav.value = label; mobileNav.value = false
+  history.replaceState(null, '', label === 'Reportes' ? '#reportes' : location.pathname + location.search)
+}
+function reportLink() {
+  if (location.hash.startsWith('#reportes') && hasRole('ADMINISTRADOR','MANAGER','AUDITOR')) activeNav.value = 'Reportes'
+}
+onMounted(() => { reportLink(); window.addEventListener('hashchange', reportLink) })
+onUnmounted(() => window.removeEventListener('hashchange', reportLink))
 function severity(status) { return ({ 'Diagnóstico':'info', 'En reparación':'warn', 'Esperando autorización':'danger', 'Listo para entrega':'success' })[status] }
 </script>
 
@@ -126,6 +136,7 @@ function severity(status) { return ({ 'Diagnóstico':'info', 'En reparación':'w
         <WorkshopRegistrationForm v-if="activeNav === 'Talleres'" />
         <template v-else-if="activeNav === 'Clientes'"><ClientList ref="clientList" :roles="roles" /><ClientRegistrationForm @registered="clientList?.reload()" /></template>
         <StatusCatalogView v-else-if="activeNav === 'Estatus'" />
+        <TestReportsView v-else-if="activeNav === 'Reportes' && hasRole('ADMINISTRADOR','MANAGER','AUDITOR')" :can-upload="hasRole('ADMINISTRADOR')" @session-expired="signOut" />
         <template v-else><div class="page-heading"><div><span class="eyebrow">TU CENTRO DE OPERACIÓN</span><h1>Una nueva marcha.<span class="heading-dot">●</span></h1><p>Personas, vehículos y procesos. Todo empieza aquí.</p></div><span class="date-chip"><i class="pi pi-calendar"></i>{{ new Date().toLocaleDateString('es-MX',{day:'numeric',month:'long',year:'numeric'}) }}</span></div>
           <section class="dashboard-hero"><div class="hero-copy"><span class="hero-kicker"><span class="signal-dot"></span> CONECTA TU OPERACIÓN</span><h2>Menos fricción.<br /><span>Más taller.</span></h2><p>Gestiona tus clientes y asocia sus vehículos desde un mismo espacio.</p><button v-if="hasRole('ADMINISTRADOR','MANAGER','RECEPCIONISTA','SECRETARIA')" @click="navigate('Clientes')" class="hero-action">Administrar clientes <i class="pi pi-arrow-up-right"></i></button><span v-else class="hero-customer-note">Has iniciado sesión en tu cuenta personal.</span></div><div class="hero-vehicle"><div class="hero-coordinate">MD — GARAGE CONTROL / 01</div><VehicleBlueprint /><div class="hero-vehicle-label"><span>PRECISIÓN / TRAZABILIDAD</span><i class="pi pi-compass"></i></div></div></section>
           <template v-if="!hasRole('CUSTOMER')">
