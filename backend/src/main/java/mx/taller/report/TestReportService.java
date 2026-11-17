@@ -31,6 +31,10 @@ public class TestReportService {
     catch(IOException error){throw new IllegalStateException("Stored report summary is invalid",error);}
   }
   @Transactional(readOnly=true) public byte[] artifact(UUID id){return required(id).getArtifact();}
+  @Transactional(readOnly=true)
+  public void requireExisting(UUID id) {
+    if (!reports.existsById(id)) throw new ReportNotFoundException();
+  }
   @Transactional public Detail upload(String title,String tool,String notes,MultipartFile file,String actorId,String ip) {
     if(title==null||title.isBlank()||title.length()>140||notes==null||notes.length()>2000)
       throw new ReportException("Indica un título de hasta 140 caracteres y notas de hasta 2000");
@@ -40,13 +44,22 @@ public class TestReportService {
     try {
       byte[] bytes=file.getBytes();
       ReportArchive.Parsed parsed=archives.parse(bytes,tool);
+      return store(title.trim(),tool,notes.trim(),parsed,bytes,actorId,ip,"TEST_REPORT_UPLOADED");
+    } catch(IOException error){throw new ReportException("No se pudo leer el archivo");}
+  }
+  @Transactional
+  public Detail saveRun(String title, ReportArchive.Parsed parsed, byte[] artifact, String actorId, String ip) {
+    return store(title,"KARATE","",parsed,artifact,actorId,ip,"TEST_REPORT_EXECUTED");
+  }
+  private Detail store(String title,String tool,String notes,ReportArchive.Parsed parsed,byte[] bytes,
+      String actorId,String ip,String event) {
+    try {
       String hash=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
       var actor=users.findById(UUID.fromString(actorId)).filter(user->user.isEnabled()).orElseThrow(()->new ReportException("La cuenta ya no está habilitada"));
-      TestReport report=reports.saveAndFlush(new TestReport(title.trim(),tool,notes.trim(),parsed,bytes,hash,actor));
-      audit.record(actor,"TEST_REPORT_UPLOADED","TEST_REPORT",report.getId().toString(),ip,"{\"tool\":\""+tool+"\"}");
+      TestReport report=reports.saveAndFlush(new TestReport(title,tool,notes,parsed,bytes,hash,actor));
+      audit.record(actor,event,"TEST_REPORT",report.getId().toString(),ip,"{\"tool\":\""+tool+"\"}");
       return detail(report.getId());
-    } catch(IOException error){throw new ReportException("No se pudo leer el archivo");}
-      catch(java.security.NoSuchAlgorithmException error){throw new IllegalStateException(error);}
+    } catch(java.security.NoSuchAlgorithmException error){throw new IllegalStateException(error);}
   }
   private TestReport required(UUID id){return reports.findById(id).orElseThrow(ReportNotFoundException::new);}
   public record Detail(UUID id,String title,String tool,String notes,String outcome,Integer total,Integer passed,Integer failed,

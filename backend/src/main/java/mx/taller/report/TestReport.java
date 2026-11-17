@@ -2,6 +2,7 @@ package mx.taller.report;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 import mx.taller.identity.AppUser;
 import org.hibernate.annotations.UuidGenerator;
@@ -27,9 +28,10 @@ public class TestReport {
   public TestReport(String title, String tool, String notes, ReportArchive.Parsed parsed, byte[] artifact, String sha256, AppUser actor) {
     this.title=title; this.tool=tool; this.notes=notes; this.outcome=parsed.outcome();
     this.total=parsed.total(); this.passed=parsed.passed(); this.failed=parsed.failed();
-    this.executedAt=parsed.executedAt(); this.summaryJson=parsed.summary().toString();
+    this.executedAt=parsed.executedAt()==null ? null : parsed.executedAt().truncatedTo(ChronoUnit.SECONDS);
+    this.summaryJson=parsed.summary().toString();
     this.artifact=artifact; this.artifactSize=artifact.length; this.sha256=sha256;
-    this.uploadedBy=actor; this.createdAt=Instant.now();
+    this.uploadedBy=actor; this.createdAt=Instant.now().truncatedTo(ChronoUnit.SECONDS);
   }
   public UUID getId(){return id;} public String getTitle(){return title;} public String getTool(){return tool;}
   public String getNotes(){return notes;} public String getOutcome(){return outcome;}

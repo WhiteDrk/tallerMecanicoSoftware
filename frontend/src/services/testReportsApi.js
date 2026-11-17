@@ -5,7 +5,13 @@ async function request(path = '', options = {}, download = false) {
   })
   if (!response.ok) {
     const body = await response.json().catch(() => ({}))
-    const error = new Error(response.status === 401 ? 'Tu sesión terminó. Inicia sesión nuevamente.' : body.message || 'No fue posible consultar los reportes.')
+    const messages = {
+      401: 'Tu sesión terminó. Inicia sesión nuevamente.',
+      409: 'Hay una ejecución en curso. Intenta de nuevo en unos segundos.'
+    }
+    const error = new Error(messages[response.status] || body.message || (options.method === 'POST'
+      ? 'No fue posible guardar el resultado.'
+      : 'No fue posible consultar los reportes.'))
     error.status = response.status
     throw error
   }
@@ -14,6 +20,12 @@ async function request(path = '', options = {}, download = false) {
 
 export const testReportsApi = {
   list: () => request(),
+  checks: () => request('/checks'),
+  run: spec => request('/runs', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(spec)
+  }),
   detail: id => request(`/${encodeURIComponent(id)}`),
   upload: ({ title, tool, notes, file }) => {
     const data = new FormData()
