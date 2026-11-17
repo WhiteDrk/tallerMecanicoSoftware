@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import KarateFeatureBuilder from './KarateFeatureBuilder.vue'
 import { testReportsApi } from '../services/testReportsApi'
 
 defineProps({ canUpload: Boolean })
@@ -8,6 +9,7 @@ const reports = ref([]), selected = ref(null), loading = ref(false), uploading =
 const error = ref(''), notice = ref(''), fileInput = ref(null), showUpload = ref(false)
 const form = reactive({ title: '', tool: 'KARATE', notes: '', file: null })
 const showRun = ref(false), checks = ref([]), loadingChecks = ref(false), running = ref(false)
+const showBuilder = ref(false), builderBusy = ref(false)
 const runForm = reactive({ checks: [], maxMs: 1000, vin: '', reportId: '' })
 let selectionRequest = 0
 const outcomes = { APROBADO: 'Aprobado', FALLIDO: 'Con fallos', INCOMPLETO: 'Incompleto', DOCUMENTADO: 'Documentado' }
@@ -42,22 +44,34 @@ async function load() {
   catch (cause) { fail(cause) }
   finally { loading.value = false }
 }
-async function toggleRun() {
-  showRun.value = !showRun.value
+async function toggleRun(panel) {
+  const open = panel === 'builder' ? !showBuilder.value : !showRun.value
+  showBuilder.value = open && panel === 'builder'
+  showRun.value = open && panel === 'quick'
   showUpload.value = false
-  if (!showRun.value || checks.value.length) return
+  if (!open || checks.value.length) return
   loadingChecks.value = true; error.value = ''
   try {
     checks.value = await testReportsApi.checks()
     runForm.checks = checks.value.filter(check => !check.requiresVin && !check.requiresReport).map(check => check.id)
   } catch (cause) {
     showRun.value = false
+    showBuilder.value = false
     fail(cause)
   } finally { loadingChecks.value = false }
 }
 function toggleUpload() {
   showUpload.value = !showUpload.value
   showRun.value = false
+  showBuilder.value = false
+}
+async function finishRun(result) {
+  await load()
+  selectionRequest++
+  openReport(result)
+  showRun.value = false
+  showBuilder.value = false
+  notice.value = 'Ejecución guardada en el historial.'
 }
 async function runChecks() {
   if (running.value || !runForm.checks.length) return
@@ -69,12 +83,8 @@ async function runChecks() {
       vin: needsVin.value ? runForm.vin.trim() : null,
       reportId: needsReport.value ? runForm.reportId : null
     })
-    await load()
-    selectionRequest++
-    openReport(result)
-    showRun.value = false
+    await finishRun(result)
     runForm.vin = ''
-    notice.value = 'Ejecución guardada en el historial.'
   } catch (cause) { fail(cause) }
   finally { running.value = false }
 }
@@ -120,13 +130,17 @@ onMounted(async () => {
   <section class="reports-page">
     <div class="reports-heading"><div><span class="reports-eyebrow">CONTROL DE CALIDAD</span><h1>Reportes de pruebas</h1><p>{{ canUpload ? 'Ejecuta verificaciones de MotorDesk y consulta sus resultados.' : 'Consulta los resultados de MotorDesk y descarga la evidencia.' }}</p></div>
       <div class="reports-actions">
-        <button v-if="canUpload" class="primary" :disabled="running || uploading || loadingChecks" :aria-expanded="showRun" @click="toggleRun"><i class="pi pi-play"></i> Ejecutar pruebas</button>
-        <button v-if="canUpload" class="secondary" :disabled="running || uploading || loadingChecks" :aria-expanded="showUpload" @click="toggleUpload"><i class="pi pi-upload"></i> Subir evidencia</button>
-        <button class="secondary" :disabled="loading || running" @click="load"><i class="pi pi-refresh"></i> Actualizar</button>
+        <button v-if="canUpload" class="primary" :disabled="running || uploading || loadingChecks || builderBusy" :aria-expanded="showRun" @click="toggleRun('quick')"><i class="pi pi-play"></i> Ejecutar pruebas</button>
+        <button v-if="canUpload" class="secondary" :disabled="running || uploading || loadingChecks || builderBusy" :aria-expanded="showBuilder" @click="toggleRun('builder')"><i class="pi pi-file-edit"></i> Crear feature</button>
+        <button v-if="canUpload" class="secondary" :disabled="running || uploading || loadingChecks || builderBusy" :aria-expanded="showUpload" @click="toggleUpload"><i class="pi pi-upload"></i> Subir evidencia</button>
+        <button class="secondary" :disabled="loading || running || builderBusy" @click="load"><i class="pi pi-refresh"></i> Actualizar</button>
       </div>
     </div>
     <p v-if="error" class="reports-alert error" role="alert">{{ error }}</p>
     <p v-if="notice" class="reports-alert success" role="status">{{ notice }}</p>
+    <p v-if="showBuilder && loadingChecks" class="reports-hint" role="status">Cargando consultas…</p>
+    <KarateFeatureBuilder v-if="canUpload && checks.length" v-show="showBuilder" :checks="checks" :reports="reportOptions"
+      @close="showBuilder=false" @busy="builderBusy=$event" @completed="finishRun" @session-expired="emit('session-expired')" />
     <form v-if="canUpload && showRun" class="reports-upload run-panel" @submit.prevent="runChecks">
       <h2>Pruebas con Karate</h2>
       <p v-if="loadingChecks" class="reports-hint" role="status">Cargando pruebas…</p>
@@ -193,8 +207,13 @@ onMounted(async () => {
           <table aria-label="Resultados por caso">
             <thead><tr><th>Prueba</th><th>HTTP esperado</th><th>HTTP obtenido</th><th>Respuesta</th><th>Resultado</th></tr></thead>
             <tbody>
-              <tr v-for="row in verifications" :key="row.nombre">
-                <td><strong>{{ row.nombre }}</strong><small>{{ row.esperado }}</small><small v-if="row.detalle" class="verification-note">{{ row.detalle }}</small></td>
+              <tr v-for="(row, index) in verifications" :key="row.id || index">
+                <td>
+                  <strong>{{ row.nombre }}</strong><small>{{ row.esperado }}</small>
+                  <small v-if="row.peticion"><code>{{ row.peticion }}</code> · {{ row.con_sesion ? 'Con sesión' : 'Sin sesión' }}</small>
+                  <small v-if="row.reporte_verificado"><button type="button" class="report-reference" @click="select(row.reporte_verificado)">Ver reporte original</button></small>
+                  <small v-if="row.detalle" class="verification-note">{{ row.detalle }}</small>
+                </td>
                 <td>{{ metric(row.http_esperado) }}</td>
                 <td>{{ metric(row.http_obtenido) }}</td>
                 <td>{{ row.tiempo_ms == null ? '—' : `${metric(row.tiempo_ms)} ms` }}</td>

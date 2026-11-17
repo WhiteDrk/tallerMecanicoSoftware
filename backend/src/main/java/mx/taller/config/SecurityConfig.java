@@ -35,6 +35,7 @@ public class SecurityConfig {
         .requestMatchers(HttpMethod.GET, "/api/v1/test-reports/checks").hasRole("ADMINISTRADOR")
         .requestMatchers(HttpMethod.GET, "/api/v1/test-reports", "/api/v1/test-reports/**").hasAnyRole("ADMINISTRADOR","MANAGER","AUDITOR")
         .requestMatchers(HttpMethod.POST, "/api/v1/test-reports", "/api/v1/test-reports/runs").hasRole("ADMINISTRADOR")
+        .requestMatchers(HttpMethod.POST, "/api/v1/test-reports/features", "/api/v1/test-reports/features/preview").hasRole("ADMINISTRADOR")
         .requestMatchers(HttpMethod.GET, "/api/v1/status-catalog").hasAnyRole("ADMINISTRADOR", "MANAGER")
         .requestMatchers(HttpMethod.POST, "/api/v1/status-catalog").hasAnyRole("ADMINISTRADOR", "MANAGER")
         .requestMatchers(HttpMethod.PUT, "/api/v1/status-catalog/*").hasAnyRole("ADMINISTRADOR", "MANAGER")

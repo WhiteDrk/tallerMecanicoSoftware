@@ -38,7 +38,7 @@ Scenario: Consulta del catálogo de estados
   When method get
   Then assert responseStatus == 200
   And assert responseTime <= limiteMs
-  And assert Array.isArray(response) && response.length > 0 && typeof response[0].name == 'string'
+  And assert Array.isArray(response) && response.length >= minimoEstados && typeof response[0].name == 'string'
 
 @vehiculo
 Scenario: Consulta de un vehículo por VIN
@@ -46,6 +46,6 @@ Scenario: Consulta de un vehículo por VIN
   And params { criterion: 'VIN', value: '#(vinPrueba)' }
   And header Authorization = sesion
   When method get
-  Then assert responseStatus == 200
+  Then assert responseStatus == estadoVehiculo
   And assert responseTime <= limiteMs
-  And assert response.vin == vinPrueba
+  And assert estadoVehiculo == 200 ? response.vin == vinPrueba : response.code == 'VEHICLE_NOT_FOUND'

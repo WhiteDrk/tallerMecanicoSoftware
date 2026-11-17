@@ -31,6 +31,29 @@ confirma que el reporte existe y Karate comprueba que la descarga sin sesión
 devuelva `401` y `UNAUTHENTICATED`. El resultado incluye un enlace al reporte
 que se usó en la comprobación.
 
+## Crear un feature con varios escenarios
+
+1. En **Reportes**, selecciona **Crear feature** y escribe un nombre.
+2. Agrega hasta seis escenarios. Cada uno puede tener su nombre y su propia
+   consulta. Para el catálogo de estados, elige el mínimo esperado. Para un
+   vehículo, selecciona el VIN de prueba y si esperas que exista o que la API
+   devuelva HTTP 404.
+3. Pulsa **Ver .feature** para leer o descargar el código generado. **Ejecutar
+   feature** corre todos los escenarios y guarda un solo reporte con el
+   resultado de cada uno.
+4. Para comparar un caso en Burp, usa la ruta que aparece en el editor y en
+   el resultado. Captura la consulta correspondiente desde el navegador de
+   Burp y examina su respuesta en **HTTP history** o **Repeater**.
+
+Por ejemplo, agrega **Disponibilidad de la API**, **Catálogo de estados**
+y **Listado de reportes sin sesión** para comparar tres validaciones en
+un mismo reporte. El archivo generado contiene las verificaciones, con
+variables de entorno para la URL y los datos de prueba si lo ejecutas en
+Karate CLI (`MOTORDESK_BASE_URL`, `MOTORDESK_AUTHORIZATION` para casos con
+sesión y `MOTORDESK_VIN_N` o `MOTORDESK_REPORTE_N` según el número del caso).
+Para ejecutar en CLI el escenario de disponibilidad, la URL debe tener acceso
+a `/actuator/health`. El constructor consulta esa ruta dentro de la propia API.
+
 Karate ejecuta escenarios `.feature` incluidos en la API de MotorDesk. Los
 escenarios hacen consultas de solo lectura al servidor local de la propia
 instancia. Los tiempos corresponden a esas consultas internas. El ZIP contiene

@@ -18,14 +18,14 @@ async function request(path = '', options = {}, download = false) {
   return download ? response.blob() : response.json()
 }
 
+const jsonPost = body => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+
 export const testReportsApi = {
   list: () => request(),
   checks: () => request('/checks'),
-  run: spec => request('/runs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(spec)
-  }),
+  run: spec => request('/runs', jsonPost(spec)),
+  previewFeature: spec => request('/features/preview', jsonPost(spec)),
+  runFeature: spec => request('/features', jsonPost(spec)),
   detail: id => request(`/${encodeURIComponent(id)}`),
   upload: ({ title, tool, notes, file }) => {
     const data = new FormData()

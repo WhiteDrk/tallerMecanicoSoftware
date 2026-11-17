@@ -36,4 +36,18 @@ public class ReportRunController {
     var report = runner.run(spec, request.getHeader(HttpHeaders.AUTHORIZATION), actor.getName(), request.getRemoteAddr());
     return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore()).body(report);
   }
+
+  @PostMapping(value = "/features/preview", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<FeaturePreview> preview(@RequestBody KarateFeaturePlan.Request spec) {
+    return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(new FeaturePreview(runner.preview(spec)));
+  }
+
+  @PostMapping(value = "/features", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<TestReportService.Detail> runFeature(
+      @RequestBody KarateFeaturePlan.Request spec, Authentication actor, HttpServletRequest request) {
+    var report = runner.runFeature(spec, request.getHeader(HttpHeaders.AUTHORIZATION), actor.getName(), request.getRemoteAddr());
+    return ResponseEntity.status(HttpStatus.CREATED).cacheControl(CacheControl.noStore()).body(report);
+  }
+
+  record FeaturePreview(String source) {}
 }
