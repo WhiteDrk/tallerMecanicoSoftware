@@ -37,7 +37,7 @@ final class ExecutiveReportPdf {
   private static final Weight BOLD = Weight.BOLD;
   private static final float LEFT = 42;
   private static final float WIDTH = PDRectangle.A4.getWidth() - LEFT * 2;
-  private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm",
+  private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy, HH:mm",
       Locale.forLanguageTag("es-MX")).withZone(ZoneId.of("America/Mexico_City"));
 
   private ExecutiveReportPdf() {}
@@ -54,13 +54,13 @@ final class ExecutiveReportPdf {
       layout.paragraph("Informe ejecutivo de pruebas", BOLD, 25, INK);
       layout.paragraph(report.title(), BOLD, 15, INK);
       layout.paragraph(tool + "  |  " + DATE.format(report.executedAt() == null ? report.createdAt() : report.executedAt())
-          + " (Ciudad de México)", REGULAR, 10, MUTED);
+          + " (hora de la Ciudad de México)", REGULAR, 10, MUTED);
       String scope = report.summary().path("origen").asText();
       if (!scope.isBlank()) layout.paragraph("Entorno evaluado: " + scope, REGULAR, 10, MUTED);
       layout.gap(12);
       layout.section("Resumen para la dirección");
       layout.paragraph(verdict(report.outcome()), BOLD, 14, "FALLIDO".equals(report.outcome()) ? RED : TEAL);
-      layout.paragraph(decision(report.outcome()), REGULAR, 11, INK);
+      layout.paragraph(decision(report), REGULAR, 11, INK);
       if (report.total() != null) layout.distribution(report.total(), report.passed(), report.failed());
 
       if (!findings.isEmpty()) {
@@ -116,10 +116,12 @@ final class ExecutiveReportPdf {
     };
   }
 
-  private static String decision(String outcome) {
-    return switch (outcome) {
+  private static String decision(TestReportService.Detail report) {
+    return switch (report.outcome()) {
       case "APROBADO" -> "Los casos ejecutados cumplieron los criterios de esta prueba.";
-      case "FALLIDO" -> "Uno o más casos fallaron. Usa los hallazgos para decidir qué revisar antes de dar por aprobada la operación.";
+      case "FALLIDO" -> Integer.valueOf(1).equals(report.failed())
+          ? "Un caso requiere revisión. El hallazgo explica el impacto y el siguiente paso."
+          : "Hay casos que requieren revisión. Los hallazgos explican sus impactos y las acciones sugeridas.";
       case "INCOMPLETO" -> "Parte de la ejecución quedó sin verificar. Revisa los casos pendientes y repite la prueba.";
       case "DOCUMENTADO" -> "El equipo adjuntó evidencia manual. Consulta sus observaciones y las capturas de la prueba.";
       default -> "Consulta el detalle disponible de la ejecución.";
@@ -129,6 +131,10 @@ final class ExecutiveReportPdf {
   private static String number(JsonNode row, String key) {
     JsonNode value = row.path(key);
     return value.isIntegralNumber() ? value.asText() : "Sin dato";
+  }
+
+  private static String counted(JsonNode row, String key, String singular, String plural) {
+    return number(row, key) + " " + (row.path(key).asInt(-1) == 1 ? singular : plural);
   }
 
   private static String time(JsonNode row, String key) {
@@ -205,9 +211,9 @@ final class ExecutiveReportPdf {
       if (approved == null || failed == null) return;
       ensure(83);
       float card = (WIDTH - 20) / 3;
-      metric(LEFT, card, "Casos ejecutados", total, INK, PALE);
-      metric(LEFT + card + 10, card, "Aprobados", approved, TEAL, PALE);
-      metric(LEFT + 2 * (card + 10), card, "Fallidos", failed, RED, ROSE);
+      metric(LEFT, card, total == 1 ? "Caso ejecutado" : "Casos ejecutados", total, INK, PALE);
+      metric(LEFT + card + 10, card, approved == 1 ? "Aprobado" : "Aprobados", approved, TEAL, PALE);
+      metric(LEFT + 2 * (card + 10), card, failed == 1 ? "Fallido" : "Fallidos", failed, RED, ROSE);
       y -= 55;
       if (total > 0) {
         float green = (float) ((double) approved / total * WIDTH);
@@ -275,7 +281,7 @@ final class ExecutiveReportPdf {
       }
       section("Resultados por etapa");
       if (measured) {
-        paragraph("La barra muestra el P95: el tiempo en el que respondió aproximadamente el 95 % de las consultas de cada etapa.",
+        paragraph("La barra muestra el percentil 95 (p95). En cada etapa, cerca del 95 % de las consultas respondió en ese tiempo o menos.",
             REGULAR, 10, MUTED);
       }
       for (JsonNode stage : stages) {
@@ -284,7 +290,8 @@ final class ExecutiveReportPdf {
           row(name, "La etapa quedó pendiente de verificación.", "Incompleta");
           continue;
         }
-        String facts = number(stage, "escenarios") + " casos  |  " + number(stage, "fallidos") + " fallidos"
+        String facts = counted(stage, "escenarios", "caso", "casos") + "  |  "
+            + counted(stage, "fallidos", "fallido", "fallidos")
             + "  |  Máximo " + time(stage, "http_maximo_ms");
         if (!stage.path("http_p95_ms").isIntegralNumber()) {
           row(name, facts, "");
@@ -293,7 +300,7 @@ final class ExecutiveReportPdf {
         long p95 = stage.path("http_p95_ms").asLong();
         List<String> names = wrap(name, font, 11, WIDTH - 100);
         ensure(13 * names.size() + 34);
-        String label = "P95 " + p95 + " ms";
+        String label = "p95 " + p95 + " ms";
         at(LEFT + WIDTH - width(font, 10, label), y, label, BOLD, 10, TEAL);
         for (String line : names) {
           at(LEFT, y, line, BOLD, 11, INK);

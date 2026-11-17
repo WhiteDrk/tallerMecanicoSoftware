@@ -1,4 +1,4 @@
-Feature: Consulta autenticada de vehiculos en MotorDesk Railway
+Feature: Consulta autenticada de vehículos en MotorDesk (Railway)
 
   Background:
     * configure connectTimeout = 5000
@@ -13,7 +13,7 @@ Feature: Consulta autenticada de vehiculos en MotorDesk Railway
     * assert total >= 1 && total <= 200 && total % 1 == 0
     * def casos = karate.repeat(total, function(i) { return { numero: i + 1 }; })
 
-  Scenario Outline: Consulta autorizada de vehiculo - caso <numero>
+  Scenario Outline: Consulta autorizada de vehículo - caso <numero>
     Given url 'https://motordesk-pruebas.up.railway.app'
     And path 'api', 'v1', 'vehicles'
     And param criterion = 'VIN'

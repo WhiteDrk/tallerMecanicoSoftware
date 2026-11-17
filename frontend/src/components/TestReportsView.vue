@@ -23,6 +23,7 @@ const reportOptions = computed(() => {
 })
 const date = value => value ? new Date(value).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : 'Sin fecha de ejecución'
 const metric = value => value == null ? '—' : Number(value).toLocaleString('es-MX')
+const counted = (value, singular, plural) => `${metric(value)} ${value === 1 ? singular : plural}`
 const httpCodes = value => value ? Object.entries(value).map(([code,count]) => `${code}: ${count}`).join(' · ') : '—'
 function fail(cause) { error.value = cause.message; if (cause.status === 401) emit('session-expired') }
 function openReport(report) {
@@ -193,13 +194,17 @@ onMounted(async () => {
       <button v-for="report in reports" :key="report.id" class="report-item" :class="{selected:selected?.id===report.id}" @click="select(report.id)">
         <span class="report-item-meta"><b>{{ report.tool === 'KARATE' ? 'Karate' : 'Burp' }}</b><span class="report-badge" :class="report.outcome.toLowerCase()">{{ outcomes[report.outcome] }}</span></span>
         <strong>{{ report.title }}</strong><small>{{ date(report.executedAt || report.createdAt) }}</small>
-        <span v-if="report.total != null" class="report-counts">{{ metric(report.total) }} casos · {{ metric(report.failed) }} fallidos</span>
+        <span v-if="report.total != null" class="report-counts">{{ counted(report.total, 'caso', 'casos') }} · {{ counted(report.failed, 'fallido', 'fallidos') }}</span>
       </button>
     </aside><article class="report-detail">
       <div v-if="!selected" class="reports-placeholder"><i class="pi pi-chart-bar"></i><h2>La evidencia, en un solo lugar</h2><p>Selecciona una ejecución para ver su resumen y descargar los archivos originales.</p></div>
       <template v-else>
         <div class="detail-heading"><div><span class="reports-eyebrow">{{ selected.tool === 'KARATE' ? 'KARATE · PRUEBAS DE API' : 'BURP · PRUEBAS MANUALES' }}</span><h2>{{ selected.title }}</h2><p>{{ date(selected.executedAt || selected.createdAt) }}</p></div><span class="report-badge" :class="selected.outcome.toLowerCase()">{{ outcomes[selected.outcome] }}</span></div>
-        <div v-if="selected.total != null" class="report-metrics"><div><strong>{{ metric(selected.total) }}</strong><span>Casos ejecutados</span></div><div><strong>{{ metric(selected.passed) }}</strong><span>Aprobados</span></div><div :class="{hasFailures:selected.failed>0}"><strong>{{ metric(selected.failed) }}</strong><span>Fallidos</span></div></div>
+        <div v-if="selected.total != null" class="report-metrics">
+          <div><strong>{{ metric(selected.total) }}</strong><span>{{ selected.total === 1 ? 'Caso ejecutado' : 'Casos ejecutados' }}</span></div>
+          <div><strong>{{ metric(selected.passed) }}</strong><span>{{ selected.passed === 1 ? 'Aprobado' : 'Aprobados' }}</span></div>
+          <div :class="{hasFailures:selected.failed>0}"><strong>{{ metric(selected.failed) }}</strong><span>{{ selected.failed === 1 ? 'Fallido' : 'Fallidos' }}</span></div>
+        </div>
         <p v-if="selected.notes" class="report-notes">{{ selected.notes }}</p>
         <dl class="report-context"><template v-if="selected.summary.origen"><dt>Aplicación evaluada</dt><dd>{{ selected.summary.origen }}</dd></template>
           <template v-if="selected.summary.umbral_ms != null"><dt>Límite por respuesta</dt><dd>{{ metric(selected.summary.umbral_ms) }} ms</dd></template>

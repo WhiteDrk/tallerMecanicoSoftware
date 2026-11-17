@@ -38,9 +38,11 @@ final class ExecutiveReportFindings {
       if (stage.has("error")) {
         findings.add(incomplete(label));
       } else if (stage.path("fallidos").asInt() > 0) {
-        String failed = stage.path("fallidos").asText();
-        findings.add(new Finding(label, failed + " de " + stage.path("escenarios").asText()
-            + " verificaciones incumplieron un criterio.",
+        int failed = stage.path("fallidos").asInt();
+        int total = stage.path("escenarios").asInt();
+        String observed = (failed == 1 ? "Falló una verificación" : "Fallaron " + failed + " verificaciones")
+            + " en una etapa de " + total + (total == 1 ? " caso." : " casos.");
+        findings.add(new Finding(label, observed,
             "Esta etapa requiere revisión antes de dar por aprobada la operación evaluada.",
             "Abrir el detalle de Karate en la evidencia técnica, identificar qué condición falló y repetir la etapa.",
             KARATE));

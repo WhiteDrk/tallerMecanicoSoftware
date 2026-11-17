@@ -88,9 +88,11 @@ def report(folder, data):
     total = sum(stage.get('escenarios', 0) for stage in data['etapas'])
     failures = sum(stage.get('fallidos', 0) for stage in data['etapas'])
     interrupted = any('error' in stage for stage in data['etapas'])
-    conclusion = ('La ejecucion quedo incompleta; revisar los archivos de diagnostico.' if interrupted else
-                  'Hubo incumplimientos de alguna validacion; revisar el detalle antes de atribuirlos a una caida del servidor.' if failures else
-                  'Todos los casos del alcance ejecutado aprobaron. No se encontro el limite de capacidad con estos lotes.')
+    total_label = 'caso en las etapas terminadas' if total == 1 else 'casos en las etapas terminadas'
+    failure_label = 'escenario fallido' if failures == 1 else 'escenarios fallidos'
+    conclusion = ('La ejecución quedó incompleta. Revisa los archivos de diagnóstico.' if interrupted else
+                  'Se detectaron casos fallidos. Consulta el detalle para identificar la condición que no se cumplió.' if failures else
+                  'Todos los casos ejecutados cumplieron sus criterios bajo los niveles de carga probados.')
     text = f'''<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>MotorDesk · Resultados de pruebas en nube</title><style>
 *{{box-sizing:border-box}}body{{margin:0;background:#eef2f7;color:#18243b;font:16px/1.6 system-ui,sans-serif}}
@@ -102,24 +104,24 @@ table{{border-collapse:collapse;width:100%;font-size:14px}}th,td{{padding:13px 1
 th{{background:#f1f5f9}}a{{color:#075e9b}}.table{{overflow:auto}}small{{color:#637086}}code{{background:#edf2f7;padding:3px 6px;border-radius:4px}}
 @media(max-width:650px){{.cards{{grid-template-columns:1fr}}main{{padding:18px 12px}}header{{padding:24px}}}}
 @media print{{body{{background:white}}main{{padding:0}}section,.card{{break-inside:avoid}}header{{background:#e9eef5;color:#18243b}}.label{{color:#12665c}}}}
-</style><main><header><div class="label">EVIDENCIA DE EJECUCION · KARATE 2.1.4</div><h1>{title}</h1>
+</style><main><header><div class="label">EVIDENCIA DE EJECUCIÓN · KARATE 2.1.4</div><h1>{title}</h1>
 <p>Pruebas de API ejecutadas contra MotorDesk en Railway.</p><p>{html.escape(data['fecha_local'])} · America/Mexico_City</p></header>
-<div class="cards"><div class="card"><strong>{total}</strong>casos en las etapas terminadas</div><div class="card"><strong>{failures}</strong>escenarios fallidos</div>
+<div class="cards"><div class="card"><strong>{total}</strong>{total_label}</div><div class="card"><strong>{failures}</strong>{failure_label}</div>
 <div class="card"><strong>{data['umbral_ms']} ms</strong>{threshold_label}</div></div>
 <section><h2>Objetivo y alcance</h2><p>{objective}</p>
-<p>Destino: <a href="{ORIGIN}">{ORIGIN}</a>. Cliente Karate ejecutado desde la computadora local contra Railway. Un login y una comprobacion previa quedan fuera de las estadisticas.</p></section>
-<section><h2>Resultados por etapa</h2><div class="table"><table><thead><tr><th>Etapa</th><th>Casos</th><th>Paralelismo</th><th>Aprobados</th><th>Fallidos</th><th>p95 (ms)</th><th>Max. (ms)</th><th>HTML Karate</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
-<p><strong>Interpretacion:</strong> {conclusion}</p></section>
-<section><h2>Como interpretar los datos</h2><ul><li>Paralelismo es el maximo de escenarios del ejecutor; no equivale a usuarios virtuales ni garantiza solicitudes simultaneas exactas.</li>
-<li>p95 usa rango mas cercano: aproximadamente el 95 % de las respuestas tardo ese tiempo o menos.</li>
-<li>Los tiempos HTTP incluyen la red y la conexion con Railway. La duracion total de una suite tambien incluye preparacion, JVM y reportes.</li>
-<li>El umbral de {data['umbral_ms']} ms es una decision de esta practica, no un SLA del producto. Una falla por tiempo no demuestra una caida.</li>
-<li>Hay una ejecucion por etapa. No se midieron CPU, memoria o costos del servidor; agregar capturas de Metrics y Usage de Railway para complementar.</li>
-<li>Una consulta de lectura y una cuenta no representan toda la aplicacion. Estos resultados no prueban capacidad maxima ni resistencia a todos los ataques.</li></ul></section>
+<p>Destino: <a href="{ORIGIN}">{ORIGIN}</a>. Karate se ejecutó desde la computadora local contra Railway. Las estadísticas corresponden a los lotes de consultas.</p></section>
+<section><h2>Resultados por etapa</h2><div class="table"><table><thead><tr><th>Etapa</th><th>Casos</th><th>Paralelismo</th><th>Aprobados</th><th>Fallidos</th><th>p95 (ms)</th><th>Máximo (ms)</th><th>Reporte de Karate</th></tr></thead><tbody>{''.join(rows)}</tbody></table></div>
+<p><strong>Interpretación:</strong> {conclusion}</p></section>
+<section><h2>Cómo interpretar los datos</h2><ul><li>El paralelismo indica cuántos escenarios puede ejecutar Karate a la vez.</li>
+<li>El p95 se calcula por rango más cercano. Aproximadamente el 95 % de las respuestas tardó ese tiempo o menos.</li>
+<li>Los tiempos HTTP incluyen la red y la conexión con Railway. La duración total también incluye la preparación y la generación del reporte.</li>
+<li>El umbral de {data['umbral_ms']} ms es el límite elegido para esta práctica. Un fallo de latencia indica que la respuesta tardó más de lo esperado.</li>
+<li>Se hizo una ejecución por etapa. Las métricas de CPU y memoria se consultan en Railway.</li>
+<li>El alcance se limita a la consulta de vehículos probada con una cuenta autorizada.</li></ul></section>
 <section><h2>Archivos para entregar</h2><p><a href="resultados.csv">Tabla CSV</a> · <a href="resultados.json">Resultados JSON</a> · <a href="LEEME.txt">Instrucciones</a></p>
-<p>Burp Community se documenta por separado con capturas de Repeater y los codigos realmente observados. Este paquete no inventa resultados de Burp.</p>
-<p>El reporte se conserva aunque se elimine el despliegue temporal. En el navegador se puede usar Imprimir → Guardar como PDF para entregar este resumen.</p></section>
-<footer><p><small>Reportes revisados para retirar tokens y contraseñas. Datos del taller y vehiculo ficticios.</small></p></footer></main></html>'''
+<p>La evidencia de Burp Community se documenta con capturas de Repeater y los códigos observados.</p>
+<p>Guarda una copia local para conservar el reporte si se elimina el despliegue temporal. Para exportar este resumen, abre Imprimir → Guardar como PDF en el navegador.</p></section>
+<footer><p><small>Reportes revisados para retirar credenciales. Los datos del taller y del vehículo son ficticios.</small></p></footer></main></html>'''
     (folder / 'index.html').write_text(text, encoding='utf-8')
     (folder / 'resultados.json').write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     fields = ['nombre', 'casos_configurados', 'paralelismo', 'escenarios', 'aprobados', 'fallidos',
@@ -132,13 +134,13 @@ th{{background:#f1f5f9}}a{{color:#075e9b}}.table{{overflow:auto}}small{{color:#6
         'Extraer todo el ZIP y abrir index.html en el navegador. No abrir dentro del ZIP.\n'
         'El resumen enlaza los reportes originales de cada etapa. Conservar las subcarpetas y los archivos res.\n'
         'Para PDF: abrir index.html, Imprimir, Guardar como PDF.\n'
-        'Puede adjuntarse el ZIP a Classroom, Moodle o un correo; este programa no envia mensajes ni publica archivos.\n'
+        'Puedes adjuntar el ZIP a Classroom, Moodle o un correo.\n'
         'Registrar por separado las pruebas manuales de Burp con capturas sin encabezados Authorization visibles.\n', encoding='utf-8')
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--credentials-file', type=Path, help='JSON privado preparado para esta demostracion; no se copia al reporte')
+    parser.add_argument('--credentials-file', type=Path, help='JSON privado para esta demostración')
     parser.add_argument('--max-ms', type=int, default=2000)
     parser.add_argument('--publish', action='store_true', help='Al terminar, subir el ZIP al portal con una cuenta de administración')
     parser.add_argument('--demo-clase', action='store_true', help='Primero ejecutar 8 casos de autenticación, permisos y validación')
@@ -151,10 +153,10 @@ def main():
         email, password = account['email'], account['password']
     else:
         email = input('Correo de recepcion: ').strip()
-        password = getpass.getpass('Contrasena: ')
+        password = getpass.getpass('Contraseña: ')
     status, body = http('/api/v1/auth/login', {'email': email, 'password': password})
     if status != 200 or not body.get('accessToken'):
-        raise SystemExit('No se pudo iniciar sesion: HTTP ' + str(status))
+        raise SystemExit('No se pudo iniciar sesión. HTTP ' + str(status))
     token = body['accessToken']
     tampered_token = change_role(token)
     if args.demo_clase:
@@ -164,7 +166,7 @@ def main():
             raise SystemExit('La demostración requiere la cuenta de Lucía con rol de recepción; no uses la de Daniel para ejecutar los casos.')
     status, body = http('/api/v1/vehicles?criterion=VIN&value=3KPF24AD3R2610131', token=token)
     if status != 200 or body.get('workshopName') != 'MotorDesk Pruebas Nube':
-        raise SystemExit('La comprobacion previa no aprobo: HTTP ' + str(status) + '. No se ejecutaron lotes.')
+        raise SystemExit('La comprobación previa falló. HTTP ' + str(status) + '. Se detuvo la prueba antes del primer lote.')
     now = datetime.now(ZoneInfo('America/Mexico_City'))
     folder = HERE / 'target' / ('nube-' + now.strftime('%Y%m%d-%H%M%S'))
     folder.mkdir(parents=True, exist_ok=False)
@@ -172,12 +174,12 @@ def main():
             'herramienta': 'Karate 2.1.4', 'umbral_ms': args.max_ms, 'demostracion_clase': args.demo_clase, 'etapas': []}
     engine = Path.home() / '.karate/dist/karate-2.1.4.jar'
     if not engine.is_file():
-        raise SystemExit('No se encontro el motor Karate 2.1.4 instalado.')
+        raise SystemExit('No se encontró el motor de Karate 2.1.4.')
     runs = [(name, cases, threads, '03-nube-consulta-autenticada.feature') for name, cases, threads in STAGES]
     if args.demo_clase:
         runs.insert(0, ('Seguridad y validaciones', 8, 1, '04-demo-seguridad.feature'))
     for index, (name, cases, threads, feature) in enumerate(runs, 1):
-        print(f'{name}: {cases} consultas, paralelismo maximo {threads}', flush=True)
+        print(f'{name}: {cases} consultas, paralelismo máximo de {threads}', flush=True)
         stage_folder = folder / ('etapa-' + str(index))
         env = {**os.environ, 'MOTORDESK_ACCESS_TOKEN': token, 'MOTORDESK_TAMPERED_TOKEN': tampered_token, 'NUBE_CASOS': str(cases), 'NUBE_MAX_MS': str(args.max_ms)}
         command = ['java', '-jar', str(engine), 'run', '-T', str(threads), '-o', str(stage_folder), str(HERE / feature)]
@@ -190,13 +192,14 @@ def main():
             stage['reporte'] = str((stage_folder / 'karate-summary.html').relative_to(folder))
             stage['exit_code'] = process.returncode
         except subprocess.TimeoutExpired:
-            stage['error'] = 'Se alcanzo el limite de 75 segundos del lote.'
+            stage['error'] = 'Se alcanzó el límite de 75 segundos del lote.'
         except (OSError, ValueError, KeyError) as error:
             stage['error'] = 'No se pudo cerrar o interpretar el reporte: ' + str(error)
         stage['duracion_proceso_s'] = round(time.monotonic() - started, 3)
         data['etapas'].append(stage)
         if 'escenarios' in stage:
-            print(f"Resultado: {stage['aprobados']}/{stage['escenarios']} aprobados; {stage['fallidos']} fallidos; HTTP {stage['estados_http']}", flush=True)
+            label = 'fallido' if stage['fallidos'] == 1 else 'fallidos'
+            print(f"Resultado: {stage['aprobados']}/{stage['escenarios']} aprobados; {stage['fallidos']} {label}; HTTP {stage['estados_http']}", flush=True)
         print(json.dumps(stage, ensure_ascii=False), flush=True)
         if stage.get('error') or stage.get('fallidos') or stage.get('exit_code'):
             print('Se detiene el aumento de carga para revisar esta etapa.', flush=True)
