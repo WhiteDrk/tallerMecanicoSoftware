@@ -1,5 +1,6 @@
 package mx.taller.report;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
@@ -7,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 import mx.taller.config.SecurityConfig;
 import mx.taller.security.JwtService;
 import org.junit.jupiter.api.Test;
@@ -31,8 +33,18 @@ class TestReportAuthorizationTest {
   void reportListDetailsAndFilesShareTheSameReadPermission(String role,boolean allowed) throws Exception {
     when(service.list()).thenReturn(List.of());
     when(service.artifact(any())).thenReturn(new byte[]{1,2});
+    when(service.detail(any())).thenReturn(new TestReportService.Detail(UUID.fromString(ID), "Prueba de catálogo",
+        "KARATE", "", "APROBADO", 1, 1, 0, Instant.parse("2026-11-16T22:00:00Z"), null, 2,
+        "0".repeat(64), JsonNodeFactory.instance.objectNode()));
     for(String path:List.of(BASE,BASE+"/"+ID,BASE+"/"+ID+"/archive"))
       mvc.perform(get(path).with(user(ID).roles(role))).andExpect(status().is(allowed?200:403));
+    var pdfResponse = mvc.perform(get(BASE+"/"+ID+"/pdf").with(user(ID).roles(role)))
+        .andExpect(status().is(allowed?200:403));
+    if(allowed) {
+      pdfResponse.andExpect(content().contentType("application/pdf"))
+          .andExpect(header().string("Cache-Control","no-store"))
+          .andExpect(header().string("Content-Disposition",org.hamcrest.Matchers.startsWith("attachment;")));
+    }
     if(!allowed)verifyNoInteractions(service);
   }
   @ParameterizedTest @CsvSource({"ADMINISTRADOR,201","MANAGER,403","AUDITOR,403","RECEPCIONISTA,403","CUSTOMER,403"})
@@ -42,7 +54,8 @@ class TestReportAuthorizationTest {
     if(expected==403)verifyNoInteractions(service);
   }
   @Test void anonymousCannotReadOrUploadEvenWithDirectUrls() throws Exception {
-    for(String path:List.of(BASE,BASE+"/"+ID,BASE+"/"+ID+"/archive"))mvc.perform(get(path)).andExpect(status().isUnauthorized());
+    for(String path:List.of(BASE,BASE+"/"+ID,BASE+"/"+ID+"/archive",BASE+"/"+ID+"/pdf"))
+      mvc.perform(get(path)).andExpect(status().isUnauthorized());
     mvc.perform(multipart(BASE).file(new MockMultipartFile("file",new byte[]{1})).param("title","Test").param("tool","KARATE"))
       .andExpect(status().isUnauthorized());
     verifyNoInteractions(service);

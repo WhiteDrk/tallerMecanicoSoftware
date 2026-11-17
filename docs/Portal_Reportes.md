@@ -69,9 +69,16 @@ catálogo, se agrega un escenario etiquetado en el feature y su entrada en
 3. Para Karate, usar el ZIP generado por `ejecutar-nube.py`, que contiene
    `resultados.json` y los reportes HTML originales.
 4. El portal muestra el resultado, fecha, total de casos y las métricas por etapa.
-5. **Copiar enlace** permite compartir una ejecución; quien abra ese enlace
-   debe iniciar sesión con un rol autorizado. **Descargar reporte completo**
-   recupera el ZIP original.
+5. **Descargar PDF ejecutivo** prepara un resumen para dirección con gráficas,
+   resultados, hallazgos, impactos, acciones sugeridas y referencias.
+   **Descargar evidencia técnica** recupera el ZIP original. Quien abra el
+   enlace copiado desde **Copiar enlace** debe iniciar sesión con un rol autorizado.
+
+El PDF se puede generar también para ejecuciones anteriores. Las gráficas
+usan los conteos y tiempos registrados. Los informes de Burp presentan las
+observaciones aportadas por el equipo y remiten a las capturas del ZIP. Para
+que el informe de Burp sea útil, describe el hallazgo, el impacto y el
+siguiente paso en **Observaciones** al subir la evidencia.
 
 Los archivos de Burp Community pueden empaquetarse en ZIP con capturas y
 documentos. Si no incluyen métricas estructuradas, aparecen como **Documentado**,

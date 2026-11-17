@@ -32,5 +32,6 @@ export const testReportsApi = {
     data.append('title', title); data.append('tool', tool); data.append('notes', notes); data.append('file', file)
     return request('', { method: 'POST', body: data })
   },
+  downloadPdf: id => request(`/${encodeURIComponent(id)}/pdf`, {}, true),
   download: id => request(`/${encodeURIComponent(id)}/archive`, {}, true)
 }

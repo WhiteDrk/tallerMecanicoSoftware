@@ -21,6 +21,13 @@ public class TestReportController {
       .header(HttpHeaders.CONTENT_DISPOSITION,ContentDisposition.attachment().filename("motordesk-reporte-"+id+".zip").build().toString())
       .header("X-Content-Type-Options","nosniff").body(service.artifact(id));
   }
+  @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+  public ResponseEntity<byte[]> pdf(@PathVariable UUID id) {
+    byte[] content = ExecutiveReportPdf.render(service.detail(id));
+    return ResponseEntity.ok().cacheControl(CacheControl.noStore()).contentType(MediaType.APPLICATION_PDF)
+      .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename("motordesk-informe-" + id + ".pdf").build().toString())
+      .header("X-Content-Type-Options", "nosniff").body(content);
+  }
   @PostMapping(consumes=MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasRole('ADMINISTRADOR')")
   public ResponseEntity<TestReportService.Detail> upload(@RequestParam String title,@RequestParam String tool,

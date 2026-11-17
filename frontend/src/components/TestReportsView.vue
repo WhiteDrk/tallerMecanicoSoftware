@@ -5,7 +5,7 @@ import { testReportsApi } from '../services/testReportsApi'
 
 defineProps({ canUpload: Boolean })
 const emit = defineEmits(['session-expired'])
-const reports = ref([]), selected = ref(null), loading = ref(false), uploading = ref(false), downloading = ref(false)
+const reports = ref([]), selected = ref(null), loading = ref(false), uploading = ref(false), downloading = ref('')
 const error = ref(''), notice = ref(''), fileInput = ref(null), showUpload = ref(false)
 const form = reactive({ title: '', tool: 'KARATE', notes: '', file: null })
 const showRun = ref(false), checks = ref([]), loadingChecks = ref(false), running = ref(false)
@@ -102,18 +102,19 @@ async function upload() {
   } catch (cause) { fail(cause) }
   finally { uploading.value = false }
 }
-async function download() {
+async function download(format) {
   if (!selected.value || downloading.value) return
   const id = selected.value.id
-  downloading.value = true; error.value = ''
+  downloading.value = format; error.value = ''
   try {
-    const blob = await testReportsApi.download(id)
+    const pdf = format === 'pdf'
+    const blob = await (pdf ? testReportsApi.downloadPdf(id) : testReportsApi.download(id))
     const url = URL.createObjectURL(blob), link = document.createElement('a')
-    link.href = url; link.download = `motordesk-reporte-${id}.zip`
+    link.href = url; link.download = pdf ? `motordesk-informe-${id}.pdf` : `motordesk-reporte-${id}.zip`
     document.body.append(link); link.click(); link.remove()
     setTimeout(() => URL.revokeObjectURL(url), 10000)
   } catch (cause) { fail(cause) }
-  finally { downloading.value = false }
+  finally { downloading.value = '' }
 }
 async function copyLink() {
   try { await navigator.clipboard.writeText(location.href); notice.value = 'Enlace copiado. La persona necesitará iniciar sesión con una cuenta autorizada.' }
@@ -181,7 +182,8 @@ onMounted(async () => {
       <h2>Agregar evidencia</h2><div class="upload-grid"><label>Título<input v-model.trim="form.title" required maxlength="140" placeholder="Consulta de vehículos · carga progresiva" /></label>
       <label>Herramienta<select v-model="form.tool"><option value="KARATE">Karate</option><option value="BURP">Burp Community</option></select></label>
       <label class="wide">Paquete ZIP · máximo 8 MB<input ref="fileInput" required type="file" accept=".zip,application/zip" @change="chooseFile" /></label>
-      <label class="wide">Observaciones<textarea v-model.trim="form.notes" maxlength="2000" rows="3" placeholder="Objetivo, condiciones y aspectos relevantes de esta ejecución." /></label></div>
+      <label class="wide">Observaciones<textarea v-model.trim="form.notes" maxlength="2000" rows="3"
+        :placeholder="form.tool === 'BURP' ? 'Describe qué observaste, a quién afecta y el siguiente paso.' : 'Objetivo y condiciones relevantes de esta ejecución.'" /></label></div>
       <p class="reports-hint">{{ form.tool === 'KARATE' ? 'Selecciona el ZIP de una ejecución de Karate con resultados.json.' : 'Incluye las capturas o los documentos de la prueba manual de Burp.' }}</p>
       <div class="reports-actions"><button class="secondary" type="button" :disabled="uploading" @click="showUpload=false">Cancelar</button><button class="primary" :disabled="uploading">{{ uploading ? 'Guardando…' : 'Guardar reporte' }}</button></div>
     </form>
@@ -226,8 +228,12 @@ onMounted(async () => {
           <tr v-for="(stage,index) in stages" :key="index"><td>{{ stage.nombre || `Etapa ${index+1}` }}</td><td v-if="stage.error" colspan="6">{{ stage.error }}</td><template v-else><td>{{ metric(stage.escenarios) }}</td><td>{{ metric(stage.paralelismo) }}</td><td>{{ metric(stage.fallidos) }}</td><td>{{ httpCodes(stage.estados_http) }}</td><td>{{ metric(stage.http_p95_ms) }} ms</td><td>{{ metric(stage.http_maximo_ms) }} ms</td></template></tr>
         </tbody></table></div>
         <p v-if="!verifications.length && stages.length" class="reports-hint">El paralelismo del ejecutor no equivale a usuarios simultáneos. Los tiempos incluyen la red. Un resultado aprobado no demuestra la capacidad máxima del sistema.</p>
-        <div class="reports-actions detail-actions"><button class="primary" :disabled="downloading" @click="download"><i class="pi pi-download"></i> {{ downloading ? 'Preparando…' : 'Descargar reporte completo' }}</button><button class="secondary" @click="copyLink"><i class="pi pi-link"></i> Copiar enlace</button></div>
-        <p class="reports-hint">{{ verifications.length ? 'El ZIP incluye los resultados y el archivo .feature de Karate.' : 'El ZIP conserva los archivos originales para consultarlos fuera del portal.' }} El enlace requiere una cuenta autorizada.</p>
+        <div class="reports-actions detail-actions">
+          <button class="primary" :disabled="!!downloading" @click="download('pdf')"><i class="pi pi-file-pdf" aria-hidden="true"></i> {{ downloading === 'pdf' ? 'Preparando PDF…' : 'Descargar PDF ejecutivo' }}</button>
+          <button class="secondary" :disabled="!!downloading" @click="download('zip')"><i class="pi pi-download" aria-hidden="true"></i> {{ downloading === 'zip' ? 'Preparando ZIP…' : 'Descargar evidencia técnica' }}</button>
+          <button class="secondary" @click="copyLink"><i class="pi pi-link" aria-hidden="true"></i> Copiar enlace</button>
+        </div>
+        <p class="reports-hint">El PDF resume los resultados, sus impactos y las acciones sugeridas. El ZIP conserva los archivos originales. El enlace requiere una cuenta autorizada.</p>
       </template>
     </article></div>
   </section>
